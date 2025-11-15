@@ -48,7 +48,7 @@ def parse_dependencies(nuspec_xml: str) -> list[tuple[str, str]]:
     """
     root = ET.fromstring(nuspec_xml)
 
-    # Получаем namespace (если есть)
+
     ns = ""
     if root.tag.startswith("{"):
         ns = root.tag.split("}")[0] + "}"
@@ -64,14 +64,14 @@ def parse_dependencies(nuspec_xml: str) -> list[tuple[str, str]]:
 
     result = []
 
-    # --- 1. Прямые зависимости ---
+
     for dep in deps_section.findall(f"{ns}dependency"):
         pkg = dep.attrib.get("id")
         ver = dep.attrib.get("version", "")
         if pkg:
             result.append((pkg, ver))
 
-    # --- 2. Зависимости внутри <group> ---
+
     for group in deps_section.findall(f"{ns}group"):
         for dep in group.findall(f"{ns}dependency"):
             pkg = dep.attrib.get("id")
