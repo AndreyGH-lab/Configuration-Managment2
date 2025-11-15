@@ -1,46 +1,81 @@
-
-from nuget_parser import download_nupkg, extract_nuspec, parse_dependencies
-import os
-
 import argparse
-from config_loader import load_config
+from npm_parser import fetch_npm_metadata, extract_dependencies
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="NuGet dependency visualizer (Variant 20)")
-    parser.add_argument("--config", required=True, help="Path to YAML config")
-
+    parser = argparse.ArgumentParser(
+        description="NPM dependency visualizer (Variant 20)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # Обязательные параметры
+    parser.add_argument(
+        "--package",
+        required=True,
+        help="Name of the package to analyze"
+    )
+    parser.add_argument(
+        "--repository",
+        required=True,
+        help="Repository URL or path to test repository file"
+    )
+    
+    # Опциональные параметры с значениями по умолчанию
+    parser.add_argument(
+        "--test-mode",
+        action="store_true",
+        default=False,
+        help="Enable test repository mode"
+    )
+    parser.add_argument(
+        "--version",
+        default="latest",
+        help="Package version to analyze"
+    )
+    parser.add_argument(
+        "--output",
+        default="graph.png",
+        help="Name of the generated graph image file"
+    )
+    parser.add_argument(
+        "--max-depth",
+        type=int,
+        default=5,
+        help="Maximum dependency analysis depth"
+    )
+    
     args = parser.parse_args()
-    cfg = load_config(args.config)
 
+    # Вывод всех параметров (требование этапа 1)
+    print("=== Configuration Parameters ===")
+    print(f"package = {args.package}")
+    print(f"repository = {args.repository}")
+    print(f"test_mode = {args.test_mode}")
+    print(f"version = {args.version}")
+    print(f"output = {args.output}")
+    print(f"max_depth = {args.max_depth}")
+    print("================================\n")
 
-    print(f"package = {cfg.package}")
-    print(f"version = {cfg.version}")
-    print(f"output_file = {cfg.output_file}")
-    print(f"ascii_tree = {cfg.ascii_tree}")
-    print(f"max_depth = {cfg.max_depth}")
-    print(f"filter = {cfg.filter}")
-    print(f"test_mode = {cfg.test_mode}")
+    # Этап 2: Извлечение зависимостей
+    print("--- Stage 2: NPM Direct Dependency Extraction ---")
+    
+    try:
+        metadata = fetch_npm_metadata(args.package, args.version)
+        deps = extract_dependencies(metadata)
 
-    print("\n--- Stage 2: NuGet download + dependency parsing ---")
-
-    nupkg_filename = f"{cfg.package}.{cfg.version}.nupkg"
-
-    # 1. Скачиваем .nupkg
-    download_nupkg(cfg.package, cfg.version, nupkg_filename)
-
-    # 2. Извлекаем .nuspec
-    nuspec_xml = extract_nuspec(nupkg_filename)
-
-    # 3. Парсим зависимости
-    deps = parse_dependencies(nuspec_xml)
-
-    print("\nDependencies:")
-    if not deps:
-        print("No dependencies found.")
-    else:
-        for pkg, ver in deps:
-            print(f"- {pkg} ({ver})")
+        print("\nDirect dependencies:")
+        if not deps:
+            print("No dependencies found.")
+        else:
+            for name, ver in deps.items():
+                print(f"- {name}: {ver}")
+                
+    except Exception as e:
+        print(f"Error during dependency extraction: {e}")
+        return 1
+        
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())
