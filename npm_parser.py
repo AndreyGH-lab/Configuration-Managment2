@@ -2,11 +2,8 @@ import json
 import urllib.request
 
 
-def fetch_npm_metadata(package: str, version: str) -> dict:
-    """
-    Загружает JSON метаданные npm-пакета.
-    """
-    url = f"https://registry.npmjs.org/{package}/{version}"
+def fetch_npm_metadata(package: str, version: str, repository_url: str) -> dict:
+    url = f"{repository_url}/{package}/{version}"
     print(f"Downloading: {url}")
 
     try:

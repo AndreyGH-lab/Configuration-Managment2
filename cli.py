@@ -60,7 +60,7 @@ def main() -> None:
     print("--- Stage 2: NPM Direct Dependency Extraction ---")
     
     try:
-        metadata = fetch_npm_metadata(args.package, args.version)
+        metadata = fetch_npm_metadata(args.package, args.version, args.repository)
         deps = extract_dependencies(metadata)
 
         print("\nDirect dependencies:")
