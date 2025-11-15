@@ -2,6 +2,7 @@ import argparse
 from npm_parser import fetch_npm_metadata, extract_dependencies, parse_test_repository
 from dependency_graph import DependencyGraph
 from npm_comparison import NPMComparator
+from visualizer import GraphVisualizer
 
 
 def main() -> None:
@@ -19,6 +20,7 @@ def main() -> None:
     parser.add_argument("--algorithm", choices=["bfs-recursive", "bfs-iterative"], default="bfs-recursive", help="Algorithm for graph traversal")
     parser.add_argument("--show-load-order", action="store_true", default=False, help="Show dependency load order (Stage 4)")
     parser.add_argument("--compare-with-npm", action="store_true", default=False, help="Compare with real NPM (Stage 4)")
+    parser.add_argument("--visualize", action="store_true", default=False, help="Generate visualization (Stage 5)")
     
     args = parser.parse_args()
 
@@ -32,11 +34,13 @@ def main() -> None:
     print(f"algorithm = {args.algorithm}")
     print(f"show_load_order = {args.show_load_order}")
     print(f"compare_with_npm = {args.compare_with_npm}")
+    print(f"visualize = {args.visualize}")
     print("================================\n")
 
     print("--- Stage 2 & 3: Dependency Graph Construction ---")
     
     graph = DependencyGraph()
+    visualizer = GraphVisualizer()
     
     if args.test_mode:
         print(f"Test mode: using file {args.repository}")
@@ -66,9 +70,24 @@ def main() -> None:
                 
             graph.print_graph()
             
-            # Этап 4: Порядок загрузки для тестового режима
+            # Этап 4: Порядок загрузки
             if args.show_load_order:
                 graph.print_load_order()
+            
+            # Этап 5: Визуализация
+            if args.visualize:
+                print("\n" + "="*50)
+                print("STAGE 5: VISUALIZATION")
+                print("="*50)
+                
+                success = visualizer.visualize_graph(
+                    graph.get_all_dependencies(),
+                    args.output,
+                    args.package
+                )
+                
+                if success:
+                    visualizer.compare_with_npm_visualization(args.package)
                 
         except Exception as e:
             print(f"Error in test mode: {e}")
@@ -123,6 +142,21 @@ def main() -> None:
                         comparator.explain_differences(comparison, our_order, npm_order)
                     else:
                         print("Failed to get NPM install order")
+            
+            # Этап 5: Визуализация
+            if args.visualize:
+                print("\n" + "="*50)
+                print("STAGE 5: VISUALIZATION")
+                print("="*50)
+                
+                success = visualizer.visualize_graph(
+                    graph.get_all_dependencies(),
+                    args.output,
+                    args.package
+                )
+                
+                if success:
+                    visualizer.compare_with_npm_visualization(args.package)
                 
         except Exception as e:
             print(f"Error during graph construction: {e}")
