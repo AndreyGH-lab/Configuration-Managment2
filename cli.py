@@ -1,6 +1,7 @@
 import argparse
 from npm_parser import fetch_npm_metadata, extract_dependencies, parse_test_repository
 from dependency_graph import DependencyGraph
+from npm_comparison import NPMComparator
 
 
 def main() -> None:
@@ -16,6 +17,8 @@ def main() -> None:
     parser.add_argument("--output", default="graph.png", help="Name of the generated graph image file")
     parser.add_argument("--max-depth", type=int, default=3, help="Maximum dependency analysis depth")
     parser.add_argument("--algorithm", choices=["bfs-recursive", "bfs-iterative"], default="bfs-recursive", help="Algorithm for graph traversal")
+    parser.add_argument("--show-load-order", action="store_true", default=False, help="Show dependency load order (Stage 4)")
+    parser.add_argument("--compare-with-npm", action="store_true", default=False, help="Compare with real NPM (Stage 4)")
     
     args = parser.parse_args()
 
@@ -27,6 +30,8 @@ def main() -> None:
     print(f"output = {args.output}")
     print(f"max_depth = {args.max_depth}")
     print(f"algorithm = {args.algorithm}")
+    print(f"show_load_order = {args.show_load_order}")
+    print(f"compare_with_npm = {args.compare_with_npm}")
     print("================================\n")
 
     print("--- Stage 2 & 3: Dependency Graph Construction ---")
@@ -39,7 +44,6 @@ def main() -> None:
             test_repo = parse_test_repository(args.repository)
             print(f"Loaded test repository with {len(test_repo)} packages")
             
-            # Проверяем, существует ли запрошенный пакет в тестовом репозитории
             if args.package not in test_repo:
                 print(f"Error: Package '{args.package}' not found in test repository")
                 print(f"Available packages: {', '.join(sorted(test_repo.keys()))}")
@@ -61,6 +65,10 @@ def main() -> None:
                 print("Cycle detection: No cycles found.")
                 
             graph.print_graph()
+            
+            # Этап 4: Порядок загрузки для тестового режима
+            if args.show_load_order:
+                graph.print_load_order()
                 
         except Exception as e:
             print(f"Error in test mode: {e}")
@@ -77,7 +85,6 @@ def main() -> None:
                     repository_url=args.repository
                 )
             else:
-
                 visited = graph.bfs_with_recursion(
                     start_package=args.package,
                     max_depth=args.max_depth,
@@ -94,6 +101,28 @@ def main() -> None:
                 print("Cycle detection: No cycles found.")
                 
             graph.print_graph()
+            
+            # Этап 4: Дополнительные операции
+            if args.show_load_order or args.compare_with_npm:
+                print("\n" + "="*50)
+                print("STAGE 4: ADDITIONAL OPERATIONS")
+                print("="*50)
+                
+                if args.show_load_order:
+                    graph.print_load_order()
+                
+                if args.compare_with_npm:
+                    comparator = NPMComparator()
+                    
+                    print("\nGetting actual NPM install order...")
+                    npm_order = comparator.get_actual_npm_install_order(args.package, args.version)
+                    
+                    if npm_order:
+                        our_order = graph.get_load_order()
+                        comparison = comparator.compare_orders(our_order, npm_order)
+                        comparator.explain_differences(comparison, our_order, npm_order)
+                    else:
+                        print("Failed to get NPM install order")
                 
         except Exception as e:
             print(f"Error during graph construction: {e}")

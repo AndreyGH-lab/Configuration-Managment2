@@ -1,4 +1,4 @@
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List
 
 
 class DependencyGraph:
@@ -11,11 +11,7 @@ class DependencyGraph:
         if dependency:
             self.graph[package].add(dependency)
     
-    def bfs_with_recursion(self, start_package: str, max_depth: int, repository_url: str, 
-                          current_depth: int = 0, visited: Optional[Set[str]] = None) -> Set[str]:
-        """
-        BFS с рекурсией для реальных npm пакетов.
-        """
+    def bfs_with_recursion(self, start_package: str, max_depth: int, repository_url: str, current_depth: int = 0, visited: Optional[Set[str]] = None) -> Set[str]:
         if visited is None:
             visited = set()
         
@@ -33,9 +29,8 @@ class DependencyGraph:
         try:
             from npm_parser import fetch_npm_metadata, extract_dependencies
             
-
             metadata = fetch_npm_metadata(start_package, "latest", repository_url)
-            dependencies = extract_dependencies(metadata)  # Только 1 аргумент!
+            dependencies = extract_dependencies(metadata)
             
             print(f"{'  ' * current_depth}Dependencies found: {len(dependencies)}")
             
@@ -56,11 +51,7 @@ class DependencyGraph:
         
         return visited
     
-    def bfs_test_mode(self, start_package: str, max_depth: int, test_repo: Dict[str, Set[str]],
-                     current_depth: int = 0, visited: Optional[Set[str]] = None) -> Set[str]:
-        """
-        BFS с рекурсией для тестового режима.
-        """
+    def bfs_test_mode(self, start_package: str, max_depth: int, test_repo: Dict[str, Set[str]], current_depth: int = 0, visited: Optional[Set[str]] = None) -> Set[str]:
         if visited is None:
             visited = set()
         
@@ -92,6 +83,50 @@ class DependencyGraph:
                 print(f"{'  ' * current_depth}Already visited: {dep_name}")
         
         return visited
+    
+    def get_load_order(self) -> List[str]:
+        """
+        Возвращает порядок загрузки зависимостей (топологическая сортировка).
+        """
+        visited = set()
+        temp_visited = set()
+        result = []
+        
+        def visit(node: str):
+            if node in temp_visited:
+                raise RuntimeError(f"Cyclic dependency detected at node: {node}")
+            if node in visited:
+                return
+                
+            temp_visited.add(node)
+            
+            # Рекурсивно посещаем все зависимости
+            if node in self.graph:
+                for neighbor in sorted(self.graph[node]):
+                    visit(neighbor)
+            
+            temp_visited.remove(node)
+            visited.add(node)
+            result.append(node)
+        
+        # Посещаем все узлы графа
+        for node in sorted(self.graph.keys()):
+            if node not in visited:
+                visit(node)
+        
+        return result
+    
+    def print_load_order(self):
+        """
+        Выводит порядок загрузки зависимостей.
+        """
+        try:
+            load_order = self.get_load_order()
+            print("\nDependency load order:")
+            for i, package in enumerate(load_order, 1):
+                print(f"  {i:2d}. {package}")
+        except RuntimeError as e:
+            print(f"\nError in load order calculation: {e}")
     
     def get_all_dependencies(self) -> Dict[str, Set[str]]:
         return self.graph
